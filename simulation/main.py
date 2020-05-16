@@ -52,7 +52,9 @@ class map(object):
 					self.map[x][y]= 1
 				elif rand>75:#5%
 					self.map[x][y]= 2
-				else:#75%
+				elif rand>70:#5%
+					self.map[x][y]=3
+				else:#70%
 					self.map[x][y]= 0
 
 	def update(self):
@@ -119,6 +121,8 @@ class map(object):
 						map[x][y]=(39, 230, 32)
 					elif tile==2:
 						map[x][y]=(181, 151, 91)
+					elif tile==3:
+						map[x][y]=(255, 209, 0)
 				else:
 					map[x][y]=(50, 227, 224)
 		return map
