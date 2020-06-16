@@ -2,7 +2,7 @@ import numpy as np
 import numpy.random as rand
 
 class network(object):
-    def __init__(self, NL=1, Nn=2, Ni=10, No=4, seed=8800, mutType =1, mutRate=0.5):
+    def __init__(self, NL=1, Nn=2, Ni=10, No=4, seed=8800, mutType =1, mutRate=0.05):
         #NL количество слоев
         #Nn количество нейронов в слое
         #Ni количество входов
@@ -54,48 +54,103 @@ class network(object):
 
     def mutate(self):
         rand.seed()
-        rate=self.mutRate
+        rate=self.mutRate #максимально возможное изменение веса
         NL = self.NL
         Nn = self.Nn
         Ni = self.Ni
         No = self.No
+        B = self.B
+        W = self.W
+        Bi = self.Bi
+        Wi = self.Wi
+        Bo = self.Bo
+        Wo = self.Wo
+
+
+        def randUpdate(Mat, rate, dims):
+            # dims=dimensions длины сторон матрицы (iterable of integers)
+
+            dims=list(dims)
+            #print('измерения: ', dims)
+            #print('элемент матрицы:', Mat)
+            dim = dims.pop(0)
+            for i in range(dim):
+                if len(dims)==0:
+                    Mat[i] += rate * (-1+ 2 * rand.random(1) )
+                    Mat[i]=float(Mat[i]) #костыль чтобы не вылезали array()
+                    if Mat[i] < -1:
+                        Mat[i] = -1
+                    elif Mat[i] > 1:
+                        Mat[i] = 1
+                    #print('элемент матрицы:', Mat[i])
+                else:
+                    Mat[i]=randUpdate(Mat[i], rate, dims)
+            return Mat
+
+        def randSingleUpdate(Mat, rate, dims):
+            # dims=dimensions длины сторон матрицы (iterable of integers)
+            dims = list(dims)
+            # print('измерения: ', dims)
+            # print('элемент матрицы:', Mat)
+            dim = dims.pop(0)
+            i=rand.randint(0,dim)
+            if len(dims) == 0:
+                Mat[i] += rate * (-1 + 2 * rand.random(1))
+                Mat[i] = float(Mat[i])  # костыль чтобы не вылезали array()
+                if Mat[i] < -1:
+                    Mat[i] = -1
+                elif Mat[i] > 1:
+                    Mat[i] = 1
+                # print('элемент матрицы:', Mat[i])
+            else:
+                Mat[i] = randSingleUpdate(Mat[i], rate, dims)
+            return Mat
+
 
         if self.mutType==1:
-            self.B += rate * (-1+ 2 * rand.random((Nn, NL)) )
-            self.W += rate * (-1+ 2 * rand.random((Nn, Nn, NL)) )
-            self.Bi += rate * (-1+ 2 * rand.random((Nn)) )
-            self.Wi += rate * (-1+ 2 * rand.random((Ni, Nn)) )
-            self.Bo += rate * (-1+ 2 * rand.random((No)) )
-            self.Wo += rate * (-1+ 2 * rand.random((No, Nn)) )
+            # все веса и пороги меняются случайным образом, максимум на величину Rate
+            self.B = randUpdate(B, rate, (Nn, NL))
+            self.W = randUpdate(W, rate, (Nn, Nn, NL))
+            self.Bi = randUpdate(Bi, rate, (Nn,)) #запятая висит потому что нужно сделать из integer - iterable object (список или кортеж)
+            self.Wi = randUpdate(Wi, rate, (Ni, Nn))
+            self.Bo = randUpdate(Bo, rate, (No,)) #запятая висит потому что нужно сделать из integer - iterable object (список или кортеж)
+            self.Wo = randUpdate(Wo, rate, (No, Nn))
+
+
 
         elif self.mutType==2:
+            # меняется один случайный вес, максимум на величину rate
 
-            #Запускаем лотерею
-            Bspin = np.array(rand.random((self.Nn, self.NL)))
-            Wspin = rand.random((self.Nn, self.Nn, self.NL))
-            Bispin = rand.random((self.Nn))
-            Wispin = rand.random((self.Ni, self.Nn))
-            Bospin = rand.random((self.No))
-            Wospin =  rand.random((self.No, self.Nn))
-            # Определяем максимальные очки
-            maxSpin=[Bspin.max, Wspin.max, Bispin.max, Wispin.max, Bospin.max, Wospin.max]
-            matrices=[Bspin, Wspin, Bispin, Wispin, Bospin, Wospin]
-            # общее количество элементов матрица
-            numN=np.array( [np.prod(Bspin.shape), np.prod(Bspin.shape), np.prod(Bspin.shape), np.prod(Bspin.shape), np.prod(Bspin.shape), np.prod(Bspin.shape) ])
-            #
-            choice=rand
-            if i==0:
-                print(Bspin>maxSpin)
-            if i==1:
-                print(Wspin>maxSpin)
-            if i==2:
-                print(Bispin>maxSpin)
-            if i==3:
-                print(Wispin>maxSpin)
-            if i==4:
-                print(Bospin>maxSpin)
-            if i==5:
-                print(Wospin>maxSpin)
+            # подсчитываем количество элементов
+            Bnp = np.array(B)
+            numB = np.prod(Bnp.shape)
+            Wnp=np.array(W)
+            numW=np.prod(Wnp.shape)
+            Binp = np.array(Bi)
+            numBi = np.prod(Binp.shape)
+            Winp = np.array(Wi)
+            numWi = np.prod(Winp.shape)
+            Bonp = np.array(Bo)
+            numBo = np.prod(Bonp.shape)
+            Wonp = np.array(Wo)
+            numWo = np.prod(Wonp.shape)
+            numN = [numB, numW, numBi, numWi, numBo, numWo]
+            print("количества элементов: ", numN)
+
+            # выбираем какую матрицу обновлять пропорционально количеству элементов в них
+            choice=rand.randint(0,np.sum(numN))
+            if choice<numN[0]:
+                self.B = randSingleUpdate(B, rate, (Nn, NL))
+            if choice<sum(numN[0:1]):
+                self.W = randSingleUpdate(W, rate, (Nn, Nn, NL))
+            if choice<sum(numN[0:2]):
+                self.Bi = randSingleUpdate(Bi, rate, (Nn,))
+            if choice<sum(numN[0:3]):
+                self.Wi = randSingleUpdate(Wi, rate, (Ni, Nn))
+            if choice<sum(numN[0:4]):
+                self.Bo = randSingleUpdate(Bo, rate, (No,))
+            if choice<sum(numN[0:5]):
+                self.Wo = randSingleUpdate(Wo, rate, (No, Nn))
 
         else:
             return 1
